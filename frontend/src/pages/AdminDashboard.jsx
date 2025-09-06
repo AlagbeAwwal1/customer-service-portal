@@ -3,15 +3,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../api/axios";
 import {
-  BarChart as RBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  BarChart as RBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 
-/* ---------- shared bits ---------- */
+/* -------------------- small UI bits -------------------- */
 
 function StatCard({ label, value }) {
   return (
     <div className="card card-p">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {label}
+      </div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
   );
@@ -25,14 +33,34 @@ function AnimatedBarChart({ data }) {
         <ResponsiveContainer width="100%" height="100%">
           <RBarChart data={data}>
             <CartesianGrid stroke="currentColor" opacity={0.1} />
-            <XAxis dataKey={(d) => d.date.slice(5)} tick={{ fill: "currentColor" }} axisLine={{ stroke: "currentColor" }} tickLine={{ stroke: "currentColor" }} />
-            <YAxis allowDecimals={false} tick={{ fill: "currentColor" }} axisLine={{ stroke: "currentColor" }} tickLine={{ stroke: "currentColor" }} />
+            <XAxis
+              dataKey={(d) => d.date.slice(5)}
+              tick={{ fill: "currentColor" }}
+              axisLine={{ stroke: "currentColor" }}
+              tickLine={{ stroke: "currentColor" }}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fill: "currentColor" }}
+              axisLine={{ stroke: "currentColor" }}
+              tickLine={{ stroke: "currentColor" }}
+            />
             <Tooltip
-              contentStyle={{ backgroundColor: "rgb(15 23 42 / 0.95)", border: "1px solid rgb(51 65 85)", color: "#e2e8f0" }}
+              contentStyle={{
+                backgroundColor: "rgb(15 23 42 / 0.95)",
+                border: "1px solid rgb(51 65 85)",
+                color: "#e2e8f0",
+              }}
               wrapperStyle={{ outline: "none" }}
               labelFormatter={(v) => `Day: ${v}`}
             />
-            <Bar dataKey="count" fill="currentColor" isAnimationActive animationDuration={800} radius={[8, 8, 0, 0]} />
+            <Bar
+              dataKey="count"
+              fill="currentColor"
+              isAnimationActive
+              animationDuration={800}
+              radius={[8, 8, 0, 0]}
+            />
           </RBarChart>
         </ResponsiveContainer>
       </div>
@@ -40,7 +68,7 @@ function AnimatedBarChart({ data }) {
   );
 }
 
-/* ---------- page ---------- */
+/* -------------------- main page -------------------- */
 
 export default function AdminDashboard() {
   const { data: me } = useQuery({
@@ -51,30 +79,62 @@ export default function AdminDashboard() {
   });
 
   const isOrgAdmin = me?.role === "ADMIN" || me?.role === "SUPERVISOR";
-  const [tab, setTab] = useState("overview"); // overview | users | groups
+  const [tab, setTab] = useState("overview"); // overview | users | groups | memberships
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="page-title">Admin Dashboard</h2>
         <div className="flex flex-wrap gap-2">
-          <button className={`btn btn-sm ${tab === "overview" ? "btn-primary" : ""}`} onClick={() => setTab("overview")}>Overview</button>
-          <button className={`btn btn-sm ${tab === "users" ? "btn-primary" : ""}`} onClick={() => setTab("users")} disabled={!isOrgAdmin} title={!isOrgAdmin ? "Org admin only" : ""}>Users</button>
-          <button className={`btn btn-sm ${tab === "groups" ? "btn-primary" : ""}`} onClick={() => setTab("groups")} disabled={!isOrgAdmin} title={!isOrgAdmin ? "Org admin only" : ""}>Groups</button>
+          <button
+            className={`btn btn-sm ${tab === "overview" ? "btn-primary" : ""}`}
+            onClick={() => setTab("overview")}
+          >
+            Overview
+          </button>
+          <button
+            className={`btn btn-sm ${tab === "users" ? "btn-primary" : ""}`}
+            onClick={() => setTab("users")}
+            disabled={!isOrgAdmin}
+            title={!isOrgAdmin ? "Org admin only" : ""}
+          >
+            Users
+          </button>
+          <button
+            className={`btn btn-sm ${tab === "groups" ? "btn-primary" : ""}`}
+            onClick={() => setTab("groups")}
+            disabled={!isOrgAdmin}
+            title={!isOrgAdmin ? "Org admin only" : ""}
+          >
+            Groups
+          </button>
+          <button
+            className={`btn btn-sm ${tab === "memberships" ? "btn-primary" : ""}`}
+            onClick={() => setTab("memberships")}
+            disabled={!isOrgAdmin}
+            title={!isOrgAdmin ? "Org admin only" : ""}
+          >
+            Memberships
+          </button>
         </div>
       </div>
 
       {tab === "overview" && <OverviewTab />}
+
       {isOrgAdmin && tab === "users" && <UsersTab />}
       {isOrgAdmin && tab === "groups" && <GroupsTab />}
+      {isOrgAdmin && tab === "memberships" && <MembershipsTab />}
+
       {!isOrgAdmin && tab !== "overview" && (
-        <div className="card card-p text-rose-600">You need ADMIN or SUPERVISOR role to manage your organization.</div>
+        <div className="card card-p text-rose-600">
+          You need ADMIN or SUPERVISOR role to manage your organization.
+        </div>
       )}
     </div>
   );
 }
 
-/* ---------- Overview (unchanged + resilient) ---------- */
+/* -------------------- Overview (stats + org settings) -------------------- */
 
 function OverviewTab() {
   const { data, isLoading, error } = useQuery({
@@ -85,8 +145,17 @@ function OverviewTab() {
     staleTime: 60_000,
   });
 
-  if (isLoading) return <div>Loading…</div>;
-  if (error) return <div className="text-rose-600">You don’t have permission to view org-wide stats.</div>;
+  const { data: org, refetch: refetchOrg } = useQuery({
+    queryKey: ["org-settings"],
+    queryFn: async () => (await api.get("/org-admin/org/")).data,
+    retry: false,
+  });
+
+  const rotate = useMutation({
+    mutationFn: async () =>
+      (await api.post("/org-admin/org/rotate-invite/")).data,
+    onSuccess: () => refetchOrg(),
+  });
 
   const s = data || {};
   const statusOrder = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
@@ -94,46 +163,111 @@ function OverviewTab() {
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Total Tickets" value={s.total_tickets ?? 0} />
-        {statusOrder.map(k => <StatCard key={k} label={k.replace("_"," ")} value={s.by_status?.[k] ?? 0} />)}
-      </div>
-
-      <AnimatedBarChart data={s.last_7_days || []} />
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="card card-p">
-          <div className="page-title mb-2">By Priority</div>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {priorityOrder.map(k => (
-              <li key={k} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40">
-                <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{k}</div>
-                <div className="text-lg font-semibold">{s.by_priority?.[k] ?? 0}</div>
-              </li>
-            ))}
-          </ul>
+      {isLoading ? (
+        <div className="card card-p">Loading…</div>
+      ) : error ? (
+        <div className="card card-p text-rose-600">
+          You don’t have permission to view org-wide stats.
         </div>
-
-        <div className="card card-p">
-          <div className="page-title mb-2">Top Agents</div>
-          <ul className="space-y-2">
-            {(s.top_agents || []).map(row => (
-              <li key={row.agent || "Unassigned"} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40">
-                <span>{row.agent || "Unassigned"}</span><span className="font-semibold">{row.count}</span>
-              </li>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <StatCard label="Total Tickets" value={s.total_tickets ?? 0} />
+            {statusOrder.map((k) => (
+              <StatCard
+                key={k}
+                label={k.replace("_", " ")}
+                value={s.by_status?.[k] ?? 0}
+              />
             ))}
-            {(!s.top_agents || s.top_agents.length === 0) && <li className="text-sm text-slate-500 dark:text-slate-400">No data yet.</li>}
-          </ul>
-        </div>
+          </div>
+
+          <AnimatedBarChart data={s.last_7_days || []} />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="card card-p">
+              <div className="page-title mb-2">By Priority</div>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {priorityOrder.map((k) => (
+                  <li
+                    key={k}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40"
+                  >
+                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {k}
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {s.by_priority?.[k] ?? 0}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="card card-p">
+              <div className="page-title mb-2">Top Agents</div>
+              <ul className="space-y-2">
+                {(s.top_agents || []).map((row) => (
+                  <li
+                    key={row.agent || "Unassigned"}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40"
+                  >
+                    <span>{row.agent || "Unassigned"}</span>
+                    <span className="font-semibold">{row.count}</span>
+                  </li>
+                ))}
+                {(!s.top_agents || s.top_agents.length === 0) && (
+                  <li className="text-sm text-slate-500 dark:text-slate-400">
+                    No data yet.
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="card card-p">
+        <div className="page-title mb-2">Org Settings</div>
+        {!org ? (
+          <div className="text-sm text-slate-500 dark:text-slate-400">
+            Requires admin.
+          </div>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <div>
+              <b>Name:</b> {org.name}
+            </div>
+            {org.domain ? (
+              <div>
+                <b>Domain:</b> {org.domain}
+              </div>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <b>Invite code:</b>
+              <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                {org.invite_code}
+              </code>
+              <button
+                className="btn btn-sm"
+                onClick={() => rotate.mutate()}
+                disabled={rotate.isPending}
+              >
+                {rotate.isPending ? "Rotating…" : "Rotate"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
 }
 
-/* ---------- Users: edit role & active ---------- */
+/* -------------------- Users: edit role & active, create -------------------- */
 
 function UsersTab() {
   const qc = useQueryClient();
+
   const { data: users, isLoading } = useQuery({
     queryKey: ["org-users"],
     queryFn: async () => (await api.get("/org-admin/users/")).data,
@@ -141,74 +275,185 @@ function UsersTab() {
   });
 
   const updateUser = useMutation({
-    mutationFn: ({ id, ...body }) => api.patch(`/org-admin/users/${id}/`, body).then(r => r.data),
+    mutationFn: ({ id, ...body }) =>
+      api.patch(`/org-admin/users/${id}/`, body).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-users"] }),
+  });
+
+  const createUser = useMutation({
+    mutationFn: (body) =>
+      api.post(`/org-admin/users/`, body).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org-users"] }),
   });
 
   if (isLoading) return <div className="card card-p">Loading…</div>;
 
   return (
-    <div className="card card-p">
-      <div className="page-title mb-2">Users</div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-slate-500 dark:text-slate-400">
-              <th className="px-2 py-1">Username</th>
-              <th className="px-2 py-1">Email</th>
-              <th className="px-2 py-1">Role</th>
-              <th className="px-2 py-1">Active</th>
-              <th className="px-2 py-1">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(users ?? []).map(u => (
-              <tr key={u.id} className="border-t border-slate-100 dark:border-slate-800">
-                <td className="px-2 py-2">{u.username}</td>
-                <td className="px-2 py-2">{u.email || "—"}</td>
-                <td className="px-2 py-2">
-                  <select
-                    className="select"
-                    value={u.role}
-                    onChange={(e) => updateUser.mutate({ id: u.id, role: e.target.value })}
-                  >
-                    <option value="AGENT">Agent</option>
-                    <option value="SUPERVISOR">Supervisor</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </td>
-                <td className="px-2 py-2">
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={!!u.is_active}
-                      onChange={(e) => updateUser.mutate({ id: u.id, is_active: e.target.checked })}
-                    />
-                    <span>{u.is_active ? "Yes" : "No"}</span>
-                  </label>
-                </td>
-                <td className="px-2 py-2">
-                  <button
-                    className="btn btn-sm"
-                    onClick={() => updateUser.mutate({ id: u.id, role: "AGENT" })}
-                    title="Quick demote to Agent"
-                  >
-                    Set Agent
-                  </button>
-                </td>
+    <div className="grid gap-4 md:grid-cols-2">
+      <section className="card card-p">
+        <h3 className="text-base font-semibold">Create user</h3>
+        <UserForm
+          onSubmit={(vals) => createUser.mutate(vals)}
+          submitting={createUser.isPending}
+        />
+        {createUser.isError && (
+          <div className="mt-2 text-sm text-rose-600">
+            Could not create user.
+          </div>
+        )}
+      </section>
+
+      <section className="card card-p">
+        <h3 className="text-base font-semibold">Users</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500 dark:text-slate-400">
+                <th className="px-2 py-1">Username</th>
+                <th className="px-2 py-1">Email</th>
+                <th className="px-2 py-1">Role</th>
+                <th className="px-2 py-1">Active</th>
+                <th className="px-2 py-1">Actions</th>
               </tr>
-            ))}
-            {users?.length === 0 && (
-              <tr><td className="px-2 py-6 text-slate-500 dark:text-slate-400" colSpan={5}>No users found.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {(users ?? []).map((u) => (
+                <tr
+                  key={u.id}
+                  className="border-t border-slate-100 dark:border-slate-800"
+                >
+                  <td className="px-2 py-2">{u.username}</td>
+                  <td className="px-2 py-2">{u.email || "—"}</td>
+                  <td className="px-2 py-2">
+                    <select
+                      className="select"
+                      value={u.role}
+                      onChange={(e) =>
+                        updateUser.mutate({ id: u.id, role: e.target.value })
+                      }
+                    >
+                      <option value="AGENT">Agent</option>
+                      <option value="SUPERVISOR">Supervisor</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
+                  </td>
+                  <td className="px-2 py-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!u.is_active}
+                        onChange={(e) =>
+                          updateUser.mutate({
+                            id: u.id,
+                            is_active: e.target.checked,
+                          })
+                        }
+                      />
+                      <span>{u.is_active ? "Yes" : "No"}</span>
+                    </label>
+                  </td>
+                  <td className="px-2 py-2">
+                    <button
+                      className="btn btn-sm"
+                      onClick={() =>
+                        updateUser.mutate({ id: u.id, role: "AGENT" })
+                      }
+                      title="Quick demote to Agent"
+                    >
+                      Set Agent
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {users?.length === 0 && (
+                <tr>
+                  <td
+                    className="px-2 py-6 text-slate-500 dark:text-slate-400"
+                    colSpan={5}
+                  >
+                    No users found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
 
-/* ---------- Groups: manager + members ---------- */
+function UserForm({ onSubmit, submitting }) {
+  const [f, setF] = useState({
+    username: "",
+    email: "",
+    first_name: "",
+    last_name: "",
+    role: "AGENT",
+    password: "",
+  });
+  const change = (e) => setF((s) => ({ ...s, [e.target.name]: e.target.value }));
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(f);
+      }}
+    >
+      <input
+        className="input"
+        name="username"
+        placeholder="Username"
+        value={f.username}
+        onChange={change}
+        required
+      />
+      <input
+        className="input"
+        name="email"
+        type="email"
+        placeholder="Email"
+        value={f.email}
+        onChange={change}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          className="input"
+          name="first_name"
+          placeholder="First name"
+          value={f.first_name}
+          onChange={change}
+        />
+        <input
+          className="input"
+          name="last_name"
+          placeholder="Last name"
+          value={f.last_name}
+          onChange={change}
+        />
+      </div>
+      <select className="select" name="role" value={f.role} onChange={change}>
+        <option value="AGENT">Agent</option>
+        <option value="SUPERVISOR">Supervisor</option>
+        <option value="ADMIN">Admin</option>
+      </select>
+      <input
+        className="input"
+        name="password"
+        type="password"
+        placeholder="Temporary password"
+        value={f.password}
+        onChange={change}
+      />
+      <button className="btn btn-primary" disabled={submitting}>
+        {submitting ? "Creating…" : "Create user"}
+      </button>
+    </form>
+  );
+}
+
+/* -------------------- Groups: manager + members + create -------------------- */
 
 function GroupsTab() {
   const qc = useQueryClient();
@@ -231,42 +476,61 @@ function GroupsTab() {
     if (!selected && groups?.length) setSelected(groups[0].id);
   }, [groups, selected]);
 
-  const { data: members, refetch: refetchMembers, isFetching: loadingMembers } = useQuery({
+  const {
+    data: members,
+    refetch: refetchMembers,
+    isFetching: loadingMembers,
+  } = useQuery({
     queryKey: ["org-group-members", selected],
-    queryFn: async () => (selected ? (await api.get(`/org-admin/groups/${selected}/members/`)).data : []),
+    queryFn: async () =>
+      selected
+        ? (await api.get(`/org-admin/groups/${selected}/members/`)).data
+        : [],
     enabled: !!selected,
     retry: false,
   });
 
   const changeManager = useMutation({
     mutationFn: ({ groupId, manager }) =>
-      api.post(`/org-admin/groups/${groupId}/set-manager/`, { manager }).then(r => r.data),
+      api
+        .post(`/org-admin/groups/${groupId}/set-manager/`, { manager })
+        .then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org-groups"] }),
   });
 
   const addMember = useMutation({
     mutationFn: ({ groupId, userId }) =>
-      api.post(`/org-admin/groups/${groupId}/members/${userId}/`).then(r => r.data),
+      api.post(`/org-admin/groups/${groupId}/members/${userId}/`).then((r) => r.data),
     onSuccess: () => refetchMembers(),
   });
 
   const removeMember = useMutation({
     mutationFn: ({ groupId, userId }) =>
-      api.delete(`/org-admin/groups/${groupId}/members/${userId}/`).then(r => r.data),
+      api.delete(`/org-admin/groups/${groupId}/members/${userId}/`).then((r) => r.data),
     onSuccess: () => refetchMembers(),
   });
 
-  const selectedGroup = useMemo(() => (groups ?? []).find(g => g.id === selected), [groups, selected]);
+  const createGroup = useMutation({
+    mutationFn: (body) => api.post("/org-admin/groups/", body).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-groups"] }),
+  });
+
+  const selectedGroup = useMemo(
+    () => (groups ?? []).find((g) => g.id === selected),
+    [groups, selected]
+  );
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 xl:grid-cols-3">
       <section className="card card-p">
         <h3 className="text-base font-semibold">Groups</h3>
         <ul className="mt-2 space-y-1">
-          {(groups ?? []).map(g => (
+          {(groups ?? []).map((g) => (
             <li key={g.id}>
               <button
-                className={`w-full rounded-md px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 ${selected === g.id ? "bg-slate-100 dark:bg-slate-800/60" : ""}`}
+                className={`w-full rounded-md px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                  selected === g.id ? "bg-slate-100 dark:bg-slate-800/60" : ""
+                }`}
                 onClick={() => setSelected(g.id)}
               >
                 <div className="font-medium">{g.name}</div>
@@ -276,31 +540,59 @@ function GroupsTab() {
               </button>
             </li>
           ))}
-          {(groups ?? []).length === 0 && <li className="text-sm text-slate-500 dark:text-slate-400">No groups.</li>}
+          {(groups ?? []).length === 0 && (
+            <li className="text-sm text-slate-500 dark:text-slate-400">
+              No groups.
+            </li>
+          )}
         </ul>
       </section>
 
-      <section className="card card-p">
-        <h3 className="text-base font-semibold">Group Settings</h3>
+      <section className="card card-p xl:col-span-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold">Group Settings</h3>
+          <CreateGroupForm
+            users={users ?? []}
+            onCreate={(vals) => createGroup.mutate(vals)}
+            pending={createGroup.isPending}
+          />
+        </div>
 
         {!selectedGroup ? (
-          <div className="text-sm text-slate-500 dark:text-slate-400">Select a group.</div>
+          <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Select a group.
+          </div>
         ) : (
           <>
-            <div className="mt-2">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Manager</div>
+            <div className="mt-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Manager
+              </div>
               <div className="mt-1 flex gap-2">
                 <select
                   className="select"
-                  value={selectedGroup.manager || ""}
-                  onChange={(e) => changeManager.mutate({ groupId: selectedGroup.id, manager: Number(e.target.value) })}
+                  value={
+                    selectedGroup.manager ??
+                    selectedGroup.manager_id ??
+                    ""
+                  }
+                  onChange={(e) =>
+                    changeManager.mutate({
+                      groupId: selectedGroup.id,
+                      manager: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                 >
                   <option value="">— none —</option>
-                  {(users ?? []).map(u => (
-                    <option key={u.id} value={u.id}>{u.username}</option>
+                  {(users ?? []).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.username}
+                    </option>
                   ))}
                 </select>
-                {changeManager.isPending && <span className="text-xs">Saving…</span>}
+                {changeManager.isPending && (
+                  <span className="text-xs">Saving…</span>
+                )}
               </div>
             </div>
 
@@ -310,19 +602,48 @@ function GroupsTab() {
                 <div>Loading…</div>
               ) : (
                 <ul className="space-y-1">
-                  {(members ?? []).map(m => (
-                    <li key={m.id} className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40">
-                      <span>{m.name || m.username} <span className="text-xs text-slate-500">({m.role})</span></span>
-                      <button className="btn btn-sm" onClick={() => removeMember.mutate({ groupId: selectedGroup.id, userId: m.id })}>
+                  {(members ?? []).map((m) => (
+                    <li
+                      key={m.id}
+                      className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40"
+                    >
+                      <span>
+                        {m.name || m.username}{" "}
+                        <span className="text-xs text-slate-500">
+                          ({m.role})
+                        </span>
+                      </span>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() =>
+                          removeMember.mutate({
+                            groupId: selectedGroup.id,
+                            userId: m.id,
+                          })
+                        }
+                      >
                         Remove
                       </button>
                     </li>
                   ))}
-                  {(members ?? []).length === 0 && <li className="text-sm text-slate-500 dark:text-slate-400">No members yet.</li>}
+                  {(members ?? []).length === 0 && (
+                    <li className="text-sm text-slate-500 dark:text-slate-400">
+                      No members yet.
+                    </li>
+                  )}
                 </ul>
               )}
 
-              <AddMember users={users ?? []} onAdd={(userId) => addMember.mutate({ groupId: selectedGroup.id, userId })} pending={addMember.isPending} />
+              <AddMember
+                users={users ?? []}
+                onAdd={(userId) =>
+                  addMember.mutate({
+                    groupId: selectedGroup.id,
+                    userId,
+                  })
+                }
+                pending={addMember.isPending}
+              />
             </div>
           </>
         )}
@@ -331,20 +652,162 @@ function GroupsTab() {
   );
 }
 
+function CreateGroupForm({ users, onCreate, pending }) {
+  const [name, setName] = useState("");
+  const [manager, setManager] = useState("");
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onCreate({ name, manager: manager ? Number(manager) : null });
+        setName("");
+        setManager("");
+      }}
+    >
+      <input
+        className="input"
+        placeholder="New group name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <select
+        className="select"
+        value={manager}
+        onChange={(e) => setManager(e.target.value)}
+      >
+        <option value="">Manager (optional)</option>
+        {users.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.username}
+          </option>
+        ))}
+      </select>
+      <button className="btn btn-primary" disabled={pending}>
+        {pending ? "Creating…" : "Create"}
+      </button>
+    </form>
+  );
+}
+
 function AddMember({ users, onAdd, pending }) {
   const [uid, setUid] = useState("");
   return (
     <div className="mt-3 flex items-center gap-2">
-      <select className="select" value={uid} onChange={(e) => setUid(e.target.value)}>
+      <select
+        className="select"
+        value={uid}
+        onChange={(e) => setUid(e.target.value)}
+      >
         <option value="">Select user to add…</option>
-        {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+        {users.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.username}
+          </option>
+        ))}
       </select>
-      <button className="btn btn-primary" disabled={!uid || pending} onClick={() => onAdd(Number(uid))}>
+      <button
+        className="btn btn-primary"
+        disabled={!uid || pending}
+        onClick={() => onAdd(Number(uid))}
+      >
         {pending ? "Adding…" : "Add member"}
       </button>
     </div>
   );
 }
-/* ---------- old Dashboard (resilient) ---------- */
 
- 
+/* -------------------- Memberships (quick add/remove) -------------------- */
+
+function MembershipsTab() {
+  const qc = useQueryClient();
+
+  const { data: groups } = useQuery({
+    queryKey: ["org-groups"],
+    queryFn: async () => (await api.get("/org-admin/groups/")).data,
+    retry: false,
+  });
+  const { data: users } = useQuery({
+    queryKey: ["org-users"],
+    queryFn: async () => (await api.get("/org-admin/users/")).data,
+    retry: false,
+  });
+
+  const add = useMutation({
+    mutationFn: ({ group, user }) =>
+      api.post(`/org-admin/groups/${group}/members/${user}/`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-group-members"] }),
+  });
+
+  const remove = useMutation({
+    mutationFn: ({ group, user }) =>
+      api.delete(`/org-admin/groups/${group}/members/${user}/`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["org-group-members"] }),
+  });
+
+  const [g, setG] = useState("");
+  const [u, setU] = useState("");
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <section className="card card-p">
+        <h3 className="text-base font-semibold">Add member to group</h3>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select className="select" value={g} onChange={(e) => setG(e.target.value)}>
+            <option value="">Select group</option>
+            {(groups ?? []).map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+          <select className="select" value={u} onChange={(e) => setU(e.target.value)}>
+            <option value="">Select user</option>
+            {(users ?? []).map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.username}
+              </option>
+            ))}
+          </select>
+          <button
+            className="btn btn-primary"
+            disabled={!g || !u || add.isPending}
+            onClick={() => add.mutate({ group: Number(g), user: Number(u) })}
+          >
+            {add.isPending ? "Adding…" : "Add"}
+          </button>
+        </div>
+      </section>
+
+      <section className="card card-p">
+        <h3 className="text-base font-semibold">Remove member from group</h3>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select className="select" value={g} onChange={(e) => setG(e.target.value)}>
+            <option value="">Select group</option>
+            {(groups ?? []).map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+          <select className="select" value={u} onChange={(e) => setU(e.target.value)}>
+            <option value="">Select user</option>
+            {(users ?? []).map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.username}
+              </option>
+            ))}
+          </select>
+          <button
+            className="btn"
+            disabled={!g || !u || remove.isPending}
+            onClick={() => remove.mutate({ group: Number(g), user: Number(u) })}
+          >
+            {remove.isPending ? "Removing…" : "Remove"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}

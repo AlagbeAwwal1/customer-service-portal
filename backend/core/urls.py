@@ -23,7 +23,9 @@ from accounts.views import (
     MeView,
     RegisterView,
     SignupView,      # obeys settings.ALLOW_SIGNUP
-    OrgUserViewSet,
+    OrgUserViewSet, 
+    OrgSettingsView,
+    RotateInviteView,
 )
 
 # ---- DRF router registrations ----
@@ -58,6 +60,9 @@ urlpatterns = [
     # Signup/Register (create/join organization)
     path("api/register/", RegisterView.as_view(), name="register"),
     path("api/signup/", SignupView.as_view(), name="signup"),
+
+    path("api/org-admin/org/", OrgSettingsView.as_view(), name="org-settings"),
+    path("api/org-admin/org/rotate-invite/", RotateInviteView.as_view(), name="org-rotate-invite"),
 ]
 
 # ---- Optional: API schema & docs (drf-spectacular) ----

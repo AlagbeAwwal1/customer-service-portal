@@ -4,7 +4,8 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ("id","name","domain")
+    list_display = ("id","name","domain" ,"invite_code")
+    search_fields = ("name","domain","invite_code")
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):

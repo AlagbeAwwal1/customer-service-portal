@@ -13,6 +13,7 @@ from .serializers import (
     RegistrationSerializer
 )
 from accounts.permissions import IsOrgAdmin
+from accounts.models import Organization
 
 # local mixin to avoid circular import
 class OrgScopedMixin:
@@ -75,3 +76,26 @@ class RegisterView(generics.CreateAPIView):
         data = MeSerializer(user).data
         data.update({"access": str(refresh.access_token), "refresh": str(refresh)})
         return Response(data, status=201)
+class OrgSettingsView(APIView):
+    permission_classes = [IsOrgAdmin]
+
+    def get(self, request):
+        org = request.user.organization
+        if not org:
+            return Response({"detail": "No organization on your account."}, status=400)
+        return Response({
+            "id": org.id,
+            "name": org.name,
+            "domain": org.domain,
+            "invite_code": org.invite_code,
+        })
+
+class RotateInviteView(APIView):
+    permission_classes = [IsOrgAdmin]
+
+    def post(self, request):
+        org = request.user.organization
+        if not org:
+            return Response({"detail": "No organization on your account."}, status=400)
+        org.rotate_invite()  # generates and saves a fresh code
+        return Response({"invite_code": org.invite_code})
