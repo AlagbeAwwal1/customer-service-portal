@@ -5,3 +5,4 @@ drf-spectacular
 django-cors-headers
 mssql-django
 pyodbc
+whitenoise
