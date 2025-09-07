@@ -7,29 +7,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET", "devsecret")
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1" , "https://customer-service-portal-three.vercel.app"]
 # Allow your frontend origin
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://customer-service-portal-three.vercel.app",
 ]
 
 # If you need credentials (cookies, auth headers)
 CORS_ALLOW_CREDENTIALS = True
 
 # Allow all headers (for development)
-CORS_ALLOW_ALL_HEADERS = True
+CORS_ALLOW_ALL_HEADERS =  [o for o in CORS_ALLOWED_ORIGINS if o]
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 INSTALLED_APPS = [
     "django.contrib.admin","django.contrib.auth","django.contrib.contenttypes",
     "django.contrib.sessions","django.contrib.messages","django.contrib.staticfiles",
     "rest_framework","corsheaders","drf_spectacular",
-    "accounts","tickets",
+    "accounts","tickets", "whitenoise.runserver_nostatic",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -42,6 +44,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "core.urls"
 STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STAATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # DB: choose mssql or sqlite via env DB_BACKEND
 DB_BACKEND = os.getenv("DB_BACKEND", "mssql").lower()
