@@ -55,7 +55,7 @@ export default function SignUp() {
 
       <form className="mt-4 space-y-3" onSubmit={submit}>
         <input className="input" name="username" placeholder="Username" value={form.username} onChange={onChange} required />
-        <input className="input" name="email" type="email" placeholder="Email (optional)" value={form.email} onChange={onChange} />
+        <input className="input" name="email" type="email" placeholder="Email" value={form.email} onChange={onChange} />
         <div className="grid grid-cols-2 gap-2">
           <input className="input" name="first_name" placeholder="First name" value={form.first_name} onChange={onChange} />
           <input className="input" name="last_name" placeholder="Last name" value={form.last_name} onChange={onChange} />
