@@ -3,8 +3,7 @@ djangorestframework
 djangorestframework-simplejwt
 drf-spectacular
 django-cors-headers
-mssql-django
-pyodbc
 whitenoise
 psycopg2-binary
 dj-database-url
+gunicorn
