@@ -27,6 +27,11 @@ from accounts.views import (
     OrgSettingsView,
     RotateInviteView,
 )
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 
 # ---- DRF router registrations ----
 router = DefaultRouter()
